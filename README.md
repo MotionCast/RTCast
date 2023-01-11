@@ -11,11 +11,6 @@ A custom WebRTC module using [`libdatachannel`][libdc] to connect a [Pilot][pilo
 - [googletest][gtest]
 
 
-## Setup
-
-Modify the `config.toml` file in the root directory.
-
-
 ## Build
 
 ```bash
@@ -56,4 +51,4 @@ This software is distributed under the [General Public License v2.0][license], m
 
 <!-- SHIELDS -->
 
-[shield-gpl]: https://img.shields.io/github/license/MotionCast/RTCasting
+[shield-gpl]: https://img.shields.io/github/license/MotionCast/RTCast
