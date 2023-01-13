@@ -1,60 +1,133 @@
-# Declare `rtcast` library
-add_library(rtcast DataStream.cpp Signaler.cpp SDPMsg.cpp)
-target_compile_features(rtcast INTERFACE cxx_std_17)
-
+### LIST FILES
 set(
-	RTCAST_TARGETS
-	datachannel-static
-	usrsctp
-	plog
-	srtp2
-	juice-static
-	nlohmann_json
+	RTCAST_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/DataStream.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Signaler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/SDPMsg.cpp
 )
 
 set(
 	RTCAST_HEADERS
-	${CMAKE_CURRENT_SOURCE_DIR}/ConnectionMode.h
-	${CMAKE_CURRENT_SOURCE_DIR}/DataStream.h
-	${CMAKE_CURRENT_SOURCE_DIR}/SDPMsg.h
-	${CMAKE_CURRENT_SOURCE_DIR}/Signaler.h
+	${PROJECT_SOURCE_DIR}/include/rtcast/ConnectionMode.h
+	${PROJECT_SOURCE_DIR}/include/rtcast/DataStream.h
+	${PROJECT_SOURCE_DIR}/include/rtcast/SDPMsg.h
+	${PROJECT_SOURCE_DIR}/include/rtcast/Signaler.h
 )
 
-# Link the libdatachannel library
-target_link_libraries(
-	rtcast PRIVATE
-	LibDataChannel::LibDataChannelStatic
-	nlohmann_json::nlohmann_json
-)
+### TARGET
+# Provide STATIC and SHARED targets
+add_library(rtcast-static STATIC ${RTCAST_SOURCES})
+add_library(rtcast-shared SHARED ${RTCAST_SOURCES})
 
-# Header file directory
+### HEADERS
+
+## STATIC
+# Including headers in other projects (PUBLIC) require `rtcast` prefix
 target_include_directories(
-	rtcast
+	rtcast-static
 	PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-	$<INSTALL_INTERFACE:include/rtcast>
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+	$<INSTALL_INTERFACE:include>
 )
 
-# Install Target
+# Include headers in library (PRIVATE) without prefixing with `rtcast`
+target_include_directories(
+	rtcast-static
+	PRIVATE
+	${PROJECT_SOURCE_DIR}/include/rtcast
+)
+
+target_compile_features(rtcast-static PUBLIC cxx_std_17)
+
+## SHARED
+# Including headers in other projects (PUBLIC) require `rtcast` prefix
+target_include_directories(
+	rtcast-shared
+	PUBLIC
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+	$<INSTALL_INTERFACE:include>
+)
+
+# Include headers in library (PRIVATE) without prefixing with `rtcast`
+target_include_directories(
+	rtcast-shared
+	PRIVATE
+	${PROJECT_SOURCE_DIR}/include/rtcast
+)
+
+target_compile_features(rtcast-shared PUBLIC cxx_std_17)
+
+### DEPENDENCIES
+if(USE_LIBDATACHANNEL)
+	message("-- Fetching libdatachannel from repository")
+
+	# libdatachannel
+	FetchContent_Declare(
+  	libdatachannel
+  	GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel
+  	GIT_TAG        v0.18.0
+	)
+
+	FetchContent_GetProperties(libdatachannel)
+	if(NOT libdatachannel_POPULATED)
+		# Disable JSON Tests
+		set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON tests.")
+
+		# Fetch the content using previously declared details
+	  FetchContent_Populate(libdatachannel)
+
+	  # Bring the populated content into the build
+	  add_subdirectory(${libdatachannel_SOURCE_DIR} ${libdatachannel_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+		target_compile_definitions(datachannel-static PUBLIC NO_TESTS=${BUILD_TESTS} NO_EXAMPLES=1)
+		target_compile_definitions(datachannel PUBLIC NO_TESTS=${BUILD_TESTS} NO_EXAMPLES=1)
+	endif()
+
+
+	# Save time by not compiling tests and examples
+	target_link_libraries(rtcast-static PUBLIC datachannel-static nlohmann_json)
+	target_link_libraries(rtcast-shared PUBLIC datachannel nlohmann_json)
+endif()
+
+### INSTALL
 install(
-	TARGETS rtcast nlohmann_json datachannel-static plog juice-static srtp2
+	TARGETS rtcast-shared datachannel nlohmann_json
 	EXPORT RTCastTargets
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
-	RUNTIME DESTINATION bin
+	DESTINATION lib
 )
 
-# Install Header Files
 install(
 	FILES ${RTCAST_HEADERS}
 	DESTINATION include/rtcast
 )
 
-# Install .cmake File
 install(
 	EXPORT RTCastTargets
 	FILE RTCastTargets.cmake
-	NAMESPACE RTCast::
 	DESTINATION lib/cmake/RTCast
-	EXPORT_LINK_INTERFACE_LIBRARIES
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in
+	"${CMAKE_CURRENT_BINARY_DIR}/RTCastConfig.cmake"
+	INSTALL_DESTINATION "lib/cmake/RTCast"
+	NO_SET_AND_CHECK_MACRO
+	NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+write_basic_package_version_file(
+	"${CMAKE_CURRENT_BINARY_DIR}/RTCastConfigVersion.cmake"
+	VERSION "${rtcast_VERSION_MAJOR}.${rtcast_VERSION_MINOR}"
+	COMPATIBILITY AnyNewerVersion
+)
+
+install(FILES
+	${CMAKE_CURRENT_BINARY_DIR}/RTCastConfig.cmake
+	${CMAKE_CURRENT_BINARY_DIR}/RTCastConfigVersion.cmake
+	DESTINATION lib/cmake/RTCast
+)
+
+export(EXPORT RTCastTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/RTCastTargets.cmake"
 )

@@ -1,72 +1,60 @@
-cmake_minimum_required(VERSION 3.20)
-project(RTCast VERSION 0.2.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.13)
 
-# Options
-option(NO_TESTS "Disable tests build" OFF)
+### PROJECT
+project(rtcast VERSION 0.2.0 LANGUAGES CXX)
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(BUILD_SHARED_LIBS OFF) # to force usrsctp to be built static
+### OPTIONS
+option(BUILD_TESTS "Build tests alongside project." OFF)
+option(BUILD_DOCS "Build documentation with Doxygen." OFF)
+option(USE_LIBDATACHANNEL "Use the libdatachannel library." ON)
 
-message("-- Configuring RTCast")
+# DOWNLOAD_TIMESTAMP
+cmake_policy(SET CMP0135 NEW)
+cmake_policy(SET CMP0077 NEW)
 
-# Dependencies
+### INCLUDES
 include(FetchContent)
 
-# libdatachannel
-FetchContent_Declare(
-	libdatachannel
-	GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel
-	GIT_TAG        v0.18.0
-)
+### TARGETS
+message("-- Configuring rtcast")
+add_subdirectory(src)
 
-message("-- Fetching libdatachannel")
-FetchContent_MakeAvailable(libdatachannel)
+### TESTING
+if(BUILD_TESTS)
+	message("-- Configuring tests with googletest")
+	enable_testing()
+	add_subdirectory(test)
+endif()
 
-add_library(rtcast src/DataStream.cpp src/Signaler.cpp src/SDPMsg.cpp)
-target_link_libraries(
-	rtcast PRIVATE
-	$<BUILD_INTERFACE:LibDataChannel::LibDataChannelStatic>
-	nlohmann_json::nlohmann_json
-)
+### DOCUMENTATION
+if(BUILD_DOCS)
+	message("-- Configuring documentation")
+	# Doxygen
+	find_package(Doxygen
+	             REQUIRED dot dia
+	             OPTIONAL_COMPONENTS mscgen)
 
-target_include_directories(
-	rtcast
-	PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-	$<INSTALL_INTERFACE:include/rtcast>
-)
+	if (DOXYGEN_FOUND)
+		set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/docs")
+		set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "${PROJECT_SOURCE_DIR}/README.md")
+		set(DOXYGEN_HTML_EXTRA_FILES "${PROJECT_SOURCE_DIR}/LICENSE")
+		doxygen_add_docs(docs
+			"${PROJECT_SOURCE_DIR}/README.md"
+			"${PROJECT_SOURCE_DIR}/LICENSE"
+			"${PROJECT_SOURCE_DIR}/src"
+			"${PROJECT_SOURCE_DIR}/test"
+			ALL
+			COMMENT "Generate HTML documentation")
+	else()
+		message("-- Doxygen not found")
+	endif()
+endif()
 
-set(
-	RTCAST_HEADERS
-	${CMAKE_CURRENT_SOURCE_DIR}/src/ConnectionMode.h
-	${CMAKE_CURRENT_SOURCE_DIR}/src/DataStream.h
-	${CMAKE_CURRENT_SOURCE_DIR}/src/SDPMsg.h
-	${CMAKE_CURRENT_SOURCE_DIR}/src/Signaler.h
-)
-
-# Install Target
-install(
-	TARGETS rtcast nlohmann_json #nlohmann_json datachannel-static plog juice-static srtp2
-	EXPORT RTCastTargets
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
-	RUNTIME DESTINATION bin
-)
-
-# Install Header Files
-install(
-	FILES ${RTCAST_HEADERS}
-	DESTINATION include/rtcast
-)
-
-install(
-	EXPORT RTCastTargets
-	FILE RTCastTargets.cmake
-	NAMESPACE RTCast::
-	DESTINATION lib/cmake/RTCast
-	EXPORT_LINK_INTERFACE_LIBRARIES
-)
-
-#target_compile_options(datachannel-static PRIVATE -DNO_EXAMPLES -DNO_TESTS)
-
-#add_subdirectory(src)
+### PACKING
+message("-- Setting packaging variables")
+include(InstallRequiredSystemLibraries)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_VERSION_MAJOR "${rtcast_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${rtcast_VERSION_MINOR}")
+set(CPACK_SOURCE_GENERATOR "TGZ")
+include(CPack)
