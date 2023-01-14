@@ -12,7 +12,9 @@
 
 namespace mocast {
 	/**
-	 * @brief Wraps `rtc::Description` and `rtc::Candidate` for JSON conversion
+	 * @brief Wraps `rtc::Description` and `rtc::Candidate` for JSON conversion.
+	 * @see rtc::Description
+	 * @see rtc::Candidate
 	 */
 	struct SDPMsg {
 		SDPMsg() : id{""}, type{""} {}

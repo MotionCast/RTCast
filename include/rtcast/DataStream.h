@@ -27,24 +27,34 @@ namespace mocast {
 		 * @param remoteID A String ID of the remote device to connect to.
 		 * @param iceServers A list of servers to be used in the RTC configuration.
 		 */
-		DataStream(ConnectionMode mode,
-							 const std::string_view serverURL,
-							 const std::string_view remoteID,
-							 const std::vector<std::string>& iceServers);
+		DataStream(
+			ConnectionMode mode,
+			const std::string_view serverURL,
+			const std::string_view remoteID,
+			const std::vector<std::string>& iceServers);
+
 		/// Open the Signaler WebSocket and wait for a reply or an incoming connection.
 		void Open();
 		/// Send a message through `rtc::DataChannel->send()`.
-		bool Send(std::variant<rtc::binary, std::string> data);
+		inline bool Send(std::variant<rtc::binary, std::string> data) {
+			return channel ? channel->send(data) : false;
+		}
 		/// Get future for channel open promise.
-		std::future<void> ChannelOpen();
+		inline std::future<void> ChannelOpen() { return openPromise.get_future(); }
 		/// Get future for channel closed promise.
-		std::future<void> ChannelClosed();
+		inline std::future<void> ChannelClosed() { return closedPromise.get_future(); }
 		/// Sets the callback to be called when the DataChannel receives a message.
-		void OnMessage(std::function<void(std::variant<rtc::binary, std::string>)> callback);
+		inline void OnMessage(std::function<void(std::variant<rtc::binary, std::string>)> callback) {
+			messageCallback = callback;
+		}
 		/// Sets the callback to be called when the DataChannel receives a binary message.
-		void OnBinaryMessage(std::function<void(rtc::binary)> data);
+		inline void OnBinaryMessage(std::function<void(rtc::binary)> callback) {
+			binMessageCallback = callback;
+		}
 		/// Sets the callback to be called when the DataChannel receives a string message.
-		void OnStringMessage(std::function<void(std::string)> data);
+		inline void OnStringMessage(std::function<void(std::string)> callback) {
+			strMessageCallback = callback;
+		}
 	protected:
 		/// Sets the callbacks for the `channel` member variable.
 		void SetupDataChannel();
@@ -54,7 +64,7 @@ namespace mocast {
 		/// Promise to signal when DataChannel is stablished.
 		std::promise<void> openPromise;
 		std::promise<void> closedPromise;
-		std::unique_ptr<mocast::Signaler> server;
+		std::unique_ptr<Signaler<rtc::WebSocket>> server;
 		std::unique_ptr<rtc::PeerConnection> peer;
 		std::shared_ptr<rtc::DataChannel> channel;
 

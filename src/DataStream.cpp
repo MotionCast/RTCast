@@ -10,19 +10,17 @@
 #include "Signaler.h"
 #include "ConnectionMode.h"
 
-using namespace std;
 using namespace mocast;
-
 using nlohmann::json;
 
 DataStream::DataStream(ConnectionMode mode,
-                       const string_view serverURL,
-                       const string_view remoteID,
-                       const vector<string>& iceServers) :
+                       const std::string_view serverURL,
+                       const std::string_view remoteID,
+                       const std::vector<std::string>& iceServers) :
 	// Set stream values and create Signaler object
 	mode_{mode},
 	remoteID_{remoteID},
-	server(make_unique<Signaler>(mode, serverURL, remoteID)) {
+	server(std::make_unique<Signaler<>>(mode, serverURL, remoteID)) {
 
 	rtc::Configuration config;
 
@@ -32,17 +30,17 @@ DataStream::DataStream(ConnectionMode mode,
 	}
 
 	// Set PeerConnection parameters
-	peer = make_unique<rtc::PeerConnection>(config);
+	peer = std::make_unique<rtc::PeerConnection>(config);
 
 	peer->onStateChange(
 		[](rtc::PeerConnection::State state) {
-			cout << "State: " << state << endl;
+			std::cout << "State: " << state << std::endl;
 		}
 	);
 
 	peer->onGatheringStateChange(
 		[](rtc::PeerConnection::GatheringState state) {
-			cout << "Gathering State: " << state << endl;
+			std::cout << "Gathering State: " << state << std::endl;
 		}
 	);
 
@@ -51,8 +49,8 @@ DataStream::DataStream(ConnectionMode mode,
 			json message = SDPMsg(description, remoteID_);
 
 			// Send description through Signaler
-			cout << endl << "Sending description through Signaler." << endl;
-			cout << message << endl << endl;
+			std::cout << std::endl << "Sending description through Signaler." << std::endl;
+			std::cout << message << std::endl << std::endl;
 			server->Send(message.dump());
 	});
 
@@ -61,17 +59,17 @@ DataStream::DataStream(ConnectionMode mode,
 			json message = SDPMsg(candidate, remoteID_);
 
 			// Send candidate through Signaler
-			cout << endl << "Sending candidate through Signaler." << endl;
-			cout << message << endl << endl;
+			std::cout << std::endl << "Sending candidate through Signaler." << std::endl;
+			std::cout << message << std::endl << std::endl;
 			server->Send(message.dump());
 	});
 
 	peer->onDataChannel(
-		[this](shared_ptr<rtc::DataChannel> dc) {
-			cout << "DataChannel from " << remoteID_;
-			cout << " received with label \"" << dc->label() << "\"" << endl;
+		[this](std::shared_ptr<rtc::DataChannel> dc) {
+			std::cout << "DataChannel from " << remoteID_;
+			std::cout << " received with label \"" << dc->label() << "\"" << std::endl;
 
-			channel = move(dc);
+			channel = std::move(dc);
 			SetupDataChannel();
 	});
 
@@ -96,17 +94,9 @@ void DataStream::Open() {
 
 	// Create DataChannel
 	if (mode_ == ConnectionMode::CONTROL) {
-		channel = move(peer->createDataChannel(channelLabel_));
+		channel = std::move(peer->createDataChannel(channelLabel_));
 		SetupDataChannel();
 	}
-}
-
-bool DataStream::Send(variant<rtc::binary, std::string> data) {
-	if (channel) {
-		return channel->send(data);
-	}
-
-	return false;
 }
 
 void DataStream::SetupDataChannel() {
@@ -114,7 +104,7 @@ void DataStream::SetupDataChannel() {
 		// Release channel open promise
 		openPromise.set_value();
 
-		cout << "DataChannel from " << remoteID_ << " open" << endl;
+		std::cout << "DataChannel from " << remoteID_ << " open" << std::endl;
 		channel->send("Hello, you must be " + remoteID_);
 	});
 
@@ -122,7 +112,7 @@ void DataStream::SetupDataChannel() {
 		// Release channel closed promise
 		closedPromise.set_value();
 
-		cout << "DataChannel from " << remoteID_ << " closed" << endl;
+		std::cout << "DataChannel from " << remoteID_ << " closed" << std::endl;
 	});
 
 	channel->onMessage([this](auto data) {
@@ -130,36 +120,16 @@ void DataStream::SetupDataChannel() {
 			messageCallback(data);
 		}
 
-		if (holds_alternative<std::string>(data)) {
-			if (strMessageCallback) { strMessageCallback(get<string>(data)); }
+		if (std::holds_alternative<std::string>(data)) {
+			if (strMessageCallback) { strMessageCallback(std::get<std::string>(data)); }
 
-			cout << "> " << remoteID_ << ": ";
-			cout << get<string>(data) << endl;
+			std::cout << "> " << remoteID_ << ": ";
+			std::cout << std::get<std::string>(data) << std::endl;
 		} else {
-			if (binMessageCallback) { binMessageCallback(get<rtc::binary>(data)); }
+			if (binMessageCallback) { binMessageCallback(std::get<rtc::binary>(data)); }
 
-			cout << "> " << remoteID_ << ": (binary) size=";
-			cout << get<rtc::binary>(data).size() << endl;
+			std::cout << "> " << remoteID_ << ": (binary) size=";
+			std::cout << std::get<rtc::binary>(data).size() << std::endl;
 		}
 	});
-}
-
-future<void> DataStream::ChannelOpen() {
-	return openPromise.get_future();
-}
-
-future<void> DataStream::ChannelClosed() {
-	return closedPromise.get_future();
-}
-
-void DataStream::OnMessage(function<void(variant<rtc::binary, string>)> callback) {
-	messageCallback = callback;
-}
-
-void DataStream::OnBinaryMessage(function<void(rtc::binary)> callback) {
-	binMessageCallback = callback;
-}
-
-void DataStream::OnStringMessage(function<void(string)> callback) {
-	strMessageCallback = callback;
 }

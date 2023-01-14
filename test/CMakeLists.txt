@@ -1,3 +1,10 @@
+### LIST TESTS
+set(
+  RTCAST_TESTS
+  SDPMsgTest.cpp
+  SignalerTest.cpp
+)
+
 ### FETCH DEPENDENCIES
 # googletest
 FetchContent_Declare(
@@ -10,14 +17,12 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 ### TARGET
-add_executable(
-	RTCastTestSuite
-	SDPMsgTest.cpp
-)
+add_executable(RTCastTestSuite ${RTCAST_TESTS})
 
 target_link_libraries(
 	RTCastTestSuite
 	GTest::gtest_main
+	GTest::gmock_main
 	rtcast-static
 )
 
