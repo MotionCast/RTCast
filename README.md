@@ -14,7 +14,8 @@ A custom WebRTC module using [`libdatachannel`][libdc] to connect a [Pilot][pilo
 ## Build
 
 ```bash
-# To Be Added
+$ cmake -B build -DBUILD_TESTS=1 -DBUILD_DOCS=1
+$ cmake --build build # will build docs in ./docs
 ```
 
 

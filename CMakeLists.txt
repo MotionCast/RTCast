@@ -42,6 +42,7 @@ if(BUILD_DOCS)
 			"${PROJECT_SOURCE_DIR}/README.md"
 			"${PROJECT_SOURCE_DIR}/LICENSE"
 			"${PROJECT_SOURCE_DIR}/src"
+			"${PROJECT_SOURCE_DIR}/include/rtcast"
 			"${PROJECT_SOURCE_DIR}/test"
 			ALL
 			COMMENT "Generate HTML documentation")
