@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 ### PROJECT
-project(rtcast VERSION 0.2.0 LANGUAGES CXX)
+project(rtcast VERSION 0.3.0 LANGUAGES CXX)
 
 ### OPTIONS
 option(BUILD_TESTS "Build tests alongside project." OFF)
@@ -10,6 +10,7 @@ option(USE_LIBDATACHANNEL "Use the libdatachannel library." ON)
 
 # DOWNLOAD_TIMESTAMP
 cmake_policy(SET CMP0135 NEW)
+# OVERRIDE CHILD PROJECT OPTIONS
 cmake_policy(SET CMP0077 NEW)
 
 ### INCLUDES
@@ -29,6 +30,7 @@ endif()
 ### DOCUMENTATION
 if(BUILD_DOCS)
 	message("-- Configuring documentation")
+
 	# Doxygen
 	find_package(Doxygen
 	             REQUIRED dot dia
@@ -51,7 +53,7 @@ if(BUILD_DOCS)
 	endif()
 endif()
 
-### PACKING
+### PACKAGING
 message("-- Setting packaging variables")
 include(InstallRequiredSystemLibraries)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
