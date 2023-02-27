@@ -62,9 +62,10 @@ if(USE_LIBDATACHANNEL)
 
 	# libdatachannel
 	FetchContent_Declare(
-  	libdatachannel
-  	GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel
-  	GIT_TAG        v0.18.0
+		libdatachannel
+		GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel
+		GIT_TAG        v0.18.2
+		GIT_SHALLOW TRUE
 	)
 
 	FetchContent_GetProperties(libdatachannel)
